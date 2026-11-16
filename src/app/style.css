@@ -313,7 +313,8 @@ h1 span {
 .view-actions {
   position: absolute;
   right: 17px;
-  top: 71px;
+  /* Clears the time scrubber that sits directly above. */
+  top: 100px;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -499,6 +500,7 @@ h1 span {
   display: flex;
   flex-direction: column;
   gap: 21px;
+  overflow-y: auto;
 }
 .panel {
   border-bottom: 1px solid #e8eade;
@@ -867,4 +869,249 @@ h1 span {
   .workspace-heading h1 {
     font-size: 21px;
   }
+}
+
+/* ---------- day/night + lighting ---------- */
+.time-scrubber {
+  position: absolute;
+  top: 56px;
+  right: 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px 5px 5px;
+  border-radius: 8px;
+  background: #f8faefe0;
+  border: 1px solid #ffffffc4;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 3px 10px #344c3e12;
+  pointer-events: auto;
+}
+.time-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: #eef1e4;
+  color: #7c8b6e;
+}
+.time-read {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  min-width: 46px;
+}
+.time-read b {
+  font-size: 11px;
+  color: #55644c;
+  font-variant-numeric: tabular-nums;
+}
+.time-read small {
+  font-size: 8px;
+  color: #9aa590;
+}
+.time-track {
+  position: relative;
+  width: 104px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+.time-track input[type="range"] {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  appearance: none;
+  background: none;
+  outline: none;
+}
+.time-track input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    #24344d 0%,
+    #3c5169 18%,
+    #e7b98d 28%,
+    #d9e7d0 44%,
+    #d9e7d0 56%,
+    #e7b98d 72%,
+    #3c5169 82%,
+    #24344d 100%
+  );
+}
+.time-track input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    #24344d 0%,
+    #3c5169 18%,
+    #e7b98d 28%,
+    #d9e7d0 44%,
+    #d9e7d0 56%,
+    #e7b98d 72%,
+    #3c5169 82%,
+    #24344d 100%
+  );
+}
+.time-track input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: #fffdf2;
+  border: 2px solid #7d8e6c;
+  box-shadow: 0 1px 3px #3a4a2e33;
+  cursor: pointer;
+}
+.time-track input[type="range"]::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fffdf2;
+  border: 2px solid #7d8e6c;
+  cursor: pointer;
+}
+.time-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 120%, #ffe9bd55, transparent 70%);
+}
+.time-sun {
+  color: #c7a463;
+}
+.time-moon {
+  color: #8e9bb5;
+}
+
+.light-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: #98a08e;
+}
+.light-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8ba171;
+}
+.light-status.computing i {
+  background: #cba15d;
+  animation: pulse 1s ease-in-out infinite;
+}
+.light-status.idle i {
+  background: #b9c0ad;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.light-readout {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.light-dial {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  background: #eef0e3;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e2e7d8;
+}
+.dial-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #f6d489, #c8a05a);
+  transition: height 0.25s ease;
+  opacity: 0.85;
+}
+.light-dial b {
+  position: relative;
+  font-size: 11px;
+  color: #4e5945;
+  font-variant-numeric: tabular-nums;
+}
+.light-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.light-copy b {
+  font-size: 11px;
+  font-weight: 500;
+  color: #5d6b52;
+}
+.light-copy small {
+  font-size: 9px;
+  color: #96a08b;
+}
+.light-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 12px;
+}
+.light-stats > div {
+  background: #f5f6ee;
+  border: 1px solid #eceee4;
+  border-radius: 6px;
+  padding: 6px 3px;
+  text-align: center;
+}
+.light-stats b {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #66745a;
+  font-variant-numeric: tabular-nums;
+}
+.light-stats small {
+  font-size: 8px;
+  color: #a2aa96;
+}
+.light-modes {
+  display: flex;
+  gap: 5px;
+  margin-top: 11px;
+}
+.light-modes button {
+  flex: 1;
+  font-size: 9px;
+  padding: 7px 6px;
+  border-radius: 5px;
+  border: 1px solid #e4e7dc;
+  background: #f5f6ef;
+  color: #8b9682;
+}
+.light-modes button.active {
+  background: #e6eddd;
+  border-color: #a3b28c;
+  color: #5a724a;
+  font-weight: 500;
+}
+.light-note {
+  font-size: 9px;
+  line-height: 1.7;
+  color: #9fa894;
+  margin: 11px 0 0;
+}
+.light-note.warn {
+  color: #b08a63;
+  margin-top: 7px;
 }

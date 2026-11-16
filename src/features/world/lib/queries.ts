@@ -6,7 +6,7 @@ export function summarize(doc: WorldDocument): WorldSummary {
   const b = Object.values(doc.blocks);
   return {
     total: b.length,
-    highest: Math.max(0, ...b.map((v) => v.y)) + 1,
+    highest: b.length ? Math.max(...b.map((v) => v.y)) + 1 : 0,
     materials: new Set(b.map((v) => v.material)).size,
   };
 }

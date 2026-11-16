@@ -18,6 +18,7 @@ import { WorldViewport, summarize } from "../features/world";
 import { InventoryPanel, Hotbar } from "../features/inventory";
 import { SelectionPanel } from "../features/selection";
 import { PlayerPanel, attachPlayer } from "../features/player";
+import { LightingPanel, TimeScrubber, formatClock, phaseLabel } from "../features/lighting";
 import {
   ArchivePanel,
   save,
@@ -29,6 +30,8 @@ import { createWorkspace, commandRouter } from "./workspace";
 const state = createWorkspace();
 const cmd = commandRouter(state);
 const stats = computed(() => summarize(state.doc));
+const clock = computed(() => formatClock(state.doc.time));
+const phase = computed(() => phaseLabel(state.doc.time));
 const viewport = ref<InstanceType<typeof WorldViewport>>();
 const help = ref(false);
 let detach: () => void;
@@ -94,8 +97,15 @@ function fullscreen() {
             <span class="view-badge"
               ><span class="status-dot"></span
               >{{ state.mode === "walk" ? "角色探索" : "自由建造" }}</span
-            ><span class="sun-badge"><Sun :size="16" />晴朗 · 白昼</span>
+            ><span class="sun-badge"
+              ><Sun :size="16" />{{ clock }} · {{ phase }}</span
+            >
           </div>
+          <TimeScrubber
+            :state="state"
+            @time="cmd.setTime"
+            @toggle="cmd.toggleClock"
+          />
           <div class="tool-palette">
             <button
               :class="{ active: state.tool === 'place' }"
@@ -133,7 +143,7 @@ function fullscreen() {
           <div class="compass"><b>N</b><span>╱</span><em>Z</em><i>X</i></div>
           <div class="hotbar-wrap">
             <div class="hotbar-caption">
-              你的建造工具箱 <span>1—8 快速切换</span>
+              你的建造工具箱 <span>1—9 快速切换 · 火把 9</span>
             </div>
             <Hotbar :state="state" @choose="cmd.material" />
           </div>
@@ -142,7 +152,7 @@ function fullscreen() {
             <p>
               单击放置或拆除 · 拖动旋转视角<br />右键拖动平移 · 滚轮缩放<br />R
               选择两个角点 · Esc 取消选择<br />Tab 切换行走 · WASD 移动 ·
-              空格跳跃
+              空格跳跃<br />T 时间流动 · 拖动时间条调整昼夜
             </p>
             <button class="soft" @click="help = false">开始建造</button>
           </div>
@@ -153,7 +163,10 @@ function fullscreen() {
             <i>·</i> 滚轮缩放</span
           ><span
             >{{ stats.total.toLocaleString() }} 方块 <i>·</i> 高度
-            {{ stats.highest }} <i>·</i> {{ stats.materials }} 种材质</span
+            {{ stats.highest }} <i>·</i> {{ stats.materials }} 种材质
+            <i>·</i>
+            {{ state.lighting.exposure === "dark" ? "昏暗" : "可见" }}
+            {{ Math.round(state.lighting.level * 100) }}%</span
           >
         </div>
         <div class="tip-banner">
@@ -165,7 +178,10 @@ function fullscreen() {
         </div>
       </section>
       <aside class="right-sidebar">
-        <InventoryPanel :state="state" @choose="cmd.material" /><SelectionPanel
+        <LightingPanel :state="state" @mode="cmd.lightingMode" /><InventoryPanel
+          :state="state"
+          @choose="cmd.material"
+        /><SelectionPanel
           :state="state"
           @fill="cmd.region(false)"
           @remove="cmd.region(true)"

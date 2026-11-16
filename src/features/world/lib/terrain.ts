@@ -1,6 +1,7 @@
 import type { Block, WorldDocument } from "../../../shared/document";
 import { key } from "../../../shared/document";
 import { initialStock } from "../../../shared/materials";
+
 export function createWorld(): WorldDocument {
   const blocks: Record<string, Block> = {};
   const put = (
@@ -17,6 +18,9 @@ export function createWorld(): WorldDocument {
       put(x, 0, z, "soil");
       put(x, 1, z, "grass");
     }
+  // A small timber house with a glazed band on three walls, an open doorway
+  // and a solid roof. Closing the doorway with brick makes its interior go
+  // dark; adding torches lights it again.
   for (let x = -4; x <= 3; x++)
     for (let z = -4; z <= 2; z++) put(x, 2, z, "wood");
   for (let y = 3; y <= 6; y++) {
@@ -44,12 +48,15 @@ export function createWorld(): WorldDocument {
   }
   for (let z = 3; z < 11; z++)
     for (let x = -1; x <= 0; x++) put(x, 2, z, "sand");
+  // One torch on the interior wall so the house is readable before you build.
+  put(-3, 4, 1, "torch");
   return {
-    version: 1,
+    version: 2,
     name: "林间小屋",
     blocks,
     inventory: initialStock(),
     player: { x: 0, y: 3, z: 9 },
     revision: 0,
+    time: 9.5,
   };
 }

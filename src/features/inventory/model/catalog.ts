@@ -14,6 +14,7 @@ export function selectSlot(s: Workspace, slot: number) {
     "brick",
     "glass",
     "leaf",
+    "torch",
   ];
   if (ids[slot]) chooseMaterial(s, ids[slot]);
 }

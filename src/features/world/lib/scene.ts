@@ -3,10 +3,15 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { blockMeshes, disposeGroup } from "./meshes";
 import type { Workspace, Vec3 } from "../../../shared/document";
 import type { SceneHit } from "../../../shared/commands";
+import { createLightRig, type LightRig } from "../../lighting/lib/render";
+import type { LightingRuntime } from "../../../shared/light";
+import { sunStateAt, torchGainAt } from "../../lighting/lib/daylight";
 export function mountScene(
   host: HTMLElement,
   state: Workspace,
+  lighting: LightingRuntime,
   onHit: (hit: SceneHit) => void,
+  onTimeChange: (time: number) => void,
 ) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#dce5df");
@@ -21,6 +26,8 @@ export function mountScene(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
   host.appendChild(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 2, 0);
@@ -33,7 +40,8 @@ export function mountScene(
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN,
   };
-  scene.add(new THREE.HemisphereLight("#fffae8", "#779082", 2.5));
+  const hemi = new THREE.HemisphereLight("#fffae8", "#779082", 2.5);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight("#fff1d5", 3);
   sun.position.set(-15, 32, 18);
   sun.castShadow = true;
@@ -46,10 +54,16 @@ export function mountScene(
   });
   sun.shadow.bias = -0.001;
   scene.add(sun);
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: "#cdd8d0", roughness: 1 }),
-  );
+  // A cool, shadowless fill takes over after sunset so open ground still
+  // reads as ground while the light field keeps interiors dark.
+  const moon = new THREE.DirectionalLight("#9fb4e8", 0);
+  moon.position.set(14, 26, -20);
+  scene.add(moon);
+  const floorMaterial = new THREE.MeshStandardMaterial({
+    color: "#cdd8d0",
+    roughness: 1,
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.08;
   floor.receiveShadow = true;
@@ -57,7 +71,8 @@ export function mountScene(
   const grid = new THREE.GridHelper(32, 32, "#abb9ad", "#c3cec3");
   grid.position.y = 0.005;
   scene.add(grid);
-  let blocks = blockMeshes(state.doc);
+  const rig: LightRig = createLightRig();
+  let blocks = blockMeshes(state.doc, rig);
   scene.add(blocks);
   const cursor = new THREE.Mesh(
     new THREE.BoxGeometry(1.02, 1.02, 1.02),
@@ -137,22 +152,65 @@ export function mountScene(
     renderer.setSize(w, h);
   });
   resize.observe(host);
-  let frame = 0,
-    revision = -1;
+  let frame = 0;
+  let revision = -1;
+  let lightVersion = -1;
+  let last = performance.now();
+  const sunPos = new THREE.Vector3();
+
+  function applyTime(time: number) {
+    const sunState = sunStateAt(time);
+    sunPos.set(sunState.x, sunState.y, sunState.z).multiplyScalar(60);
+    sun.position.copy(sunPos);
+    sun.color.set(sunState.sunColor);
+    sun.intensity = sunState.sunIntensity;
+    hemi.color.set(sunState.hemiSky);
+    hemi.groundColor.set(sunState.hemiGround);
+    hemi.intensity = sunState.hemiIntensity;
+    moon.color.set(sunState.moonColor);
+    moon.intensity = sunState.moonIntensity;
+    // The ground plane is not a block, so it cannot sample the light texture;
+    // tint it with daylight directly or it would stay bright white at night.
+    floorMaterial.color
+      .set("#cdd8d0")
+      .multiplyScalar(0.18 + 0.82 * sunState.daylight);
+    (scene.background as THREE.Color).set(sunState.background);
+    (scene.fog as THREE.Fog).color.set(sunState.fog);
+    rig.uniforms.uTorchGain.value = torchGainAt(sunState.daylight);
+    // Exposure stays fixed: darkening comes from the light field, so what the
+    // camera shows and what the panel reports are the same quantity.
+  }
+
   function animate() {
     frame = requestAnimationFrame(animate);
+    const now = performance.now();
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+
+    if (state.clockPlaying) {
+      onTimeChange((state.doc.time + dt * (24 / 120)) % 24);
+    }
+
     if (revision !== state.doc.revision) {
       scene.remove(blocks);
       disposeGroup(blocks);
-      blocks = blockMeshes(state.doc);
+      blocks = blockMeshes(state.doc, rig);
       scene.add(blocks);
       revision = state.doc.revision;
     }
+    if (lightVersion !== lighting.version) {
+      const field = lighting.field;
+      rig.upload(field?.sky ?? null, field?.torch ?? null);
+      lightVersion = lighting.version;
+    }
+    applyTime(state.doc.time);
+
     avatar.position.set(
       state.doc.player.x,
       state.doc.player.y,
       state.doc.player.z,
     );
+    avatar.visible = state.mode === "walk";
     if (state.region) {
       const { a, b } = state.region;
       region.visible = true;
@@ -181,6 +239,7 @@ export function mountScene(
       resize.disconnect();
       controls.dispose();
       disposeGroup(blocks);
+      rig.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },

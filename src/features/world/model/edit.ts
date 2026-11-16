@@ -6,6 +6,7 @@ import {
   type Block,
 } from "../../../shared/document";
 import { overlapsPlayer } from "../lib/queries";
+import { materialSpec } from "../../../shared/materials";
 import type { EditResult } from "../../../shared/commands";
 export function editCells(
   s: Workspace,
@@ -18,7 +19,8 @@ export function editCells(
     const old = s.doc.blocks[key(p)];
     if (!inside(p) || (!remove && old) || (remove && (!old || p.y === 0)))
       continue;
-    if (!remove && overlapsPlayer(p, s.doc.player))
+    // Only solid blocks obstruct the character; a torch can share a cell.
+    if (!remove && materialSpec(s.material).solid && overlapsPlayer(p, s.doc.player))
       return { ok: false, message: "这里是角色所在位置", changed: [] };
     changed.push(remove ? old! : { ...p, material: s.material });
   }
@@ -40,7 +42,11 @@ export function editCells(
   return {
     ok: true,
     message: changed.length
-      ? `${remove ? "拆除" : "放置"}了 ${changed.length} 个方块`
+      ? `${remove ? "拆除" : "放置"}了 ${changed.length} 个方块${
+          changed.some((b) => b.material === "torch")
+            ? "，光照将随之更新"
+            : ""
+        }`
       : "没有可修改的方块",
     changed,
   };
